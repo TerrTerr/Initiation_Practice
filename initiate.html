@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Improv Initiation Logger</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Improv Initiation Logger</h1>
+  <form id="initiationForm">
+    <label for="suggestion">Suggestion:</label>
+    <input type="text" id="suggestion" name="suggestion" required>
+    <br><br>
+    <label for="initiation">Initiation:</label>
+    <input type="text" id="initiation" name="initiation" required>
+    <br><br>
+    <button type="submit">Submit</button>
+  </form>
+  
+  <div id="logSection">
+    <h2>Logged Initiations</h2>
+    <div id="logTable"></div>
+  </div>
+
+  <script>
+    console.log("Script loaded");
+
+    const endpointUrl = 'https://script.google.com/macros/s/AKfycbxRGiPuVtyNSHHbIQeSfGxvu2YOS9jRwPQ5kEg_FldjYIhgWce_aa4N4X90Oxvx_n0BJg/exec';
+
+    document.getElementById('initiationForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      console.log("Form submitted");
+
+      const suggestion = document.getElementById('suggestion').value;
+      const initiation = document.getElementById('initiation').value;
+      const startTime = new Date().toISOString();
+      const endTime = new Date().toISOString();
+
+      // Additional logging to ensure values are being captured
+      console.log({ suggestion, initiation, startTime, endTime });
+
+      // Save initiation data to localStorage
+      const initiations = JSON.parse(localStorage.getItem('initiations')) || [];
+      initiations.push({ suggestion, initiation, startTime, endTime });
+      localStorage.setItem('initiations', JSON.stringify(initiations));
+      console.log("Initiations saved to localStorage");
+
+      // Save data to server
+      fetch(endpointUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          suggestion: suggestion,
+          initiation: initiation,
+          startTime: startTime,
+          endTime: endTime
+        })
+      })
+      .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Response received:", data);
+        if (data.status === 'success') {
+          alert('Initiation logged successfully!');
+          loadLog();
+        } else {
+          alert('Failed to log initiation.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to log initiation.');
+      });
+    });
+
+    function loadLog() {
+      console.log("Loading log");
+
+      // Load initiation data from localStorage
+      const initiations = JSON.parse(localStorage.getItem('initiations')) || [];
+      let logHtml = '<table><tr><th>Suggestion</th><th>Initiation</th><th>Start Time</th><th>End Time</th></tr>';
+      initiations.forEach(log => {
+        logHtml += `<tr><td>${log.suggestion}</td><td>${log.initiation}</td><td>${log.startTime}</td><td>${log.endTime}</td></tr>`;
+      });
+      logHtml += '</table>';
+      document.getElementById('logTable').innerHTML = logHtml;
+      console.log("Local log loaded");
+
+      // Load data from server
+      fetch(endpointUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Log data received:", data);
+        data.logs.forEach(log => {
+          logHtml += `<tr><td>${log.suggestion}</td><td>${log.initiation}</td><td>${log.startTime}</td><td>${log.endTime}</td></tr>`;
+        });
+        logHtml += '</table>';
+        document.getElementById('logTable').innerHTML = logHtml;
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to load log.');
+      });
+    }
+
+    window.onload = loadLog;
+  </script>
+</body>
+</html>
